@@ -15,6 +15,9 @@
     "verify:preview": "node scripts/verify-preview.mjs",
     "verify:bulk": "node scripts/verify-bulk.mjs",
     "verify:folder-scan": "node scripts/verify-folder-scan.mjs",
+    "verify:persist": "node scripts/verify-persist.mjs",
+    "verify:watch": "node scripts/verify-watch.mjs",
+    "verify:hybrid": "node scripts/verify-hybrid.mjs",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {

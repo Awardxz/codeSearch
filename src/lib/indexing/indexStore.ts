@@ -10,13 +10,16 @@ import { classifyFile, extensionOf } from "../extractors/registry";
 import { extractTextFile, toAppErrorFromNative } from "./extractor";
 import type { SampleDocument } from "./sampleDocuments";
 import { EMPTY_BULK_PROGRESS, type BulkProgress } from "./bulkPlanner";
+import { scheduleClear, schedulePersist, scheduleRemove } from "./indexPersist";
+import { bm25Index } from "../search/bm25";
 
 /**
  * In-memory index store and indexing pipeline (Phase 3).
  *
- * The index lives in application memory; persistence to SQLite arrives in
- * Phase 6. The store keeps a referentially-stable snapshot object so React
- * can subscribe with useSyncExternalStore.
+ * The hot index lives in application memory; the SQLite snapshot on disk
+ * (see `indexPersist`) is the cold copy. Every mutation that changes what is
+ * indexed queues a matching write, and the snapshot loads back on launch —
+ * so a restart restores the index instead of re-embedding it.
  *
  * Indexing is incremental at the file level: files whose size and
  * modification time match the stored record are skipped on refresh.
@@ -84,7 +87,26 @@ class IndexStore {
     const existing = this.files.get(path);
     if (!existing) return;
     this.files.set(path, { ...existing, ...patch });
+    this.syncBm25(path);
     this.emit();
+  }
+
+  /**
+   * Keep the lexical index tracking the vector index. Every mutation flows
+   * through here or the methods below, so hybrid search always scores what is
+   * actually indexed — including restored snapshots, which arrive through
+   * `addIndexedFiles`.
+   */
+  private syncBm25(path: string) {
+    const record = this.files.get(path);
+    if (!record || record.status !== "ready" || record.chunks.length === 0) {
+      bm25Index.removeFile(path);
+      return;
+    }
+    bm25Index.syncFile(
+      path,
+      record.chunks.map((chunk) => ({ text: chunk.text })),
+    );
   }
 
   private updateProgress(patch: Partial<IndexingProgress>) {
@@ -147,6 +169,7 @@ class IndexStore {
     this.emit();
 
     let cancelled = false;
+    const becameReady: string[] = [];
 
     for (const path of paths) {
       if (this.cancelRequested) {
@@ -218,6 +241,7 @@ class IndexStore {
           chunks,
           indexedAt: Date.now(),
         });
+        becameReady.push(path);
         this.updateProgress({ filesDone: this.snapshot.progress.filesDone + 1 });
       } catch (error) {
         const appError = toAppErrorFromNative(error);
@@ -239,6 +263,16 @@ class IndexStore {
       currentFile: null,
       finishedAt: Date.now(),
     });
+
+    // Persist what this run indexed. Queued through the persistence tail so a
+    // concurrent remove or clear keeps a total order.
+    if (becameReady.length > 0) {
+      schedulePersist(
+        becameReady
+          .map((path) => this.files.get(path))
+          .filter((file): file is IndexedFile => file !== undefined),
+      );
+    }
   }
 
   /** Re-index everything currently in the store (unchanged files are skipped). */
@@ -318,6 +352,7 @@ class IndexStore {
           indexedAt: Date.now(),
           isSample: true,
         });
+        this.syncBm25(path);
         this.emit();
         this.updateProgress({ filesDone: this.snapshot.progress.filesDone + 1 });
       } catch (error) {
@@ -339,6 +374,7 @@ class IndexStore {
           indexedAt: null,
           isSample: true,
         });
+        this.syncBm25(path);
         this.emit();
         this.updateProgress({ filesDone: this.snapshot.progress.filesDone + 1 });
       }
@@ -359,6 +395,7 @@ class IndexStore {
     if (existing) {
       // Invalidate metadata so the incremental skip does not trigger.
       this.files.set(path, { ...existing, modifiedMs: null, status: "queued" });
+      this.syncBm25(path);
       this.emit();
     }
     await this.indexPaths([path]);
@@ -366,13 +403,17 @@ class IndexStore {
 
   removeFile(path: string) {
     this.files.delete(path);
+    bm25Index.removeFile(path);
     this.emit();
+    scheduleRemove([path]);
   }
 
   clear() {
     if (this.running) return;
     this.files.clear();
+    bm25Index.clear();
     this.emit();
+    scheduleClear();
   }
 
   cancel() {
@@ -410,13 +451,19 @@ class IndexStore {
    * Takes a batch deliberately: a scan can produce tens of thousands of files,
    * and notifying once per file rebuilds the snapshot array for each one, which
    * turns the final stage of a large scan into quadratic work.
+   *
+   * Restoring the persisted snapshot at launch passes `persist: false` — the
+   * rows are already on disk, and rewriting them would only churn the database.
    */
-  addIndexedFiles(indexed: IndexedFile[]) {
+  addIndexedFiles(indexed: IndexedFile[], options?: { persist?: boolean }) {
     if (indexed.length === 0) return;
     for (const file of indexed) {
       this.files.set(file.path, file);
+      this.syncBm25(file.path);
     }
     this.emit();
+    if (options?.persist === false) return;
+    schedulePersist(indexed);
   }
 
   /** Record files that could not be indexed, in one notification. */

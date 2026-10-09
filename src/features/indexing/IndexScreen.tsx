@@ -1,10 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { Icon } from "../../components/Icon";
 import { useAppServices } from "../../hooks/useAppServices";
 import { useFolderScan } from "../../hooks/useFolderScan";
 import { Badge, FileKindBadge, ProgressBar, StatusBadge } from "../../components/Badges";
 import { indexStore } from "../../lib/indexing/indexStore";
+import {
+  getStoredRoots,
+  startWatching,
+  stopWatching,
+  watchStore,
+} from "../../lib/watch/watchService";
 import { SAMPLE_DOCUMENTS } from "../../lib/indexing/sampleDocuments";
 import { FILE_PICKER_EXTENSIONS, TEXT_EXTENSION_KINDS } from "../../lib/extractors/registry";
 import { commonRootOf, formatBytes, formatCompact } from "../../lib/format";
@@ -321,6 +327,7 @@ export function IndexScreen() {
               <Icon name="sync_alt" className="text-[15px]" />
               Index scanned files
             </button>
+            <WatcherToggle />
             {files.length > 0 && (
               <button
                 type="button"
@@ -333,6 +340,8 @@ export function IndexScreen() {
             )}
           </div>
         </div>
+
+        <WatcherStatus />
 
         <div className="flex flex-col gap-space-xs rounded-lg bg-surface-container-lowest p-space-md">
           <div className="flex items-center justify-between text-label-sm">
@@ -663,8 +672,8 @@ export function IndexScreen() {
         <div className="flex items-center gap-2">
           <Icon name="security" className="text-xs text-primary-fixed-dim" />
           <span>
-            Zero telemetry. Embeddings are held in this process only and are
-            released when the app closes.
+            Zero telemetry. Embeddings persist to a local SQLite snapshot and
+            reload on launch — nothing is uploaded, ever.
           </span>
         </div>
         <div className="text-primary-fixed-dim font-medium">
@@ -677,6 +686,93 @@ export function IndexScreen() {
 }
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
+
+/**
+ * Pause/resume for the filesystem watcher. Watching starts automatically
+ * after a folder is indexed; pausing keeps the roots so resume needs no
+ * dialog. Hidden until a folder has been watched at least once — with no
+ * roots there is nothing to pause.
+ */
+function WatcherToggle() {
+  const watch = useSyncExternalStore(
+    watchStore.subscribe,
+    watchStore.getSnapshot,
+    watchStore.getSnapshot,
+  );
+  if (watch.roots.length === 0) return null;
+
+  const busy = watch.pending > 0;
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        void (watch.watching
+          ? stopWatching()
+          : startWatching(getStoredRoots()))
+      }
+      title={
+        watch.watching
+          ? "Stop syncing saved changes into the index"
+          : "Resume syncing saved changes into the index"
+      }
+      className="press flex items-center gap-1 rounded bg-surface-container px-space-md py-1 text-on-surface-variant transition-colors hover:text-on-surface"
+    >
+      <Icon
+        name={watch.watching ? "pause_circle" : "play_circle"}
+        className="text-[15px]"
+      />
+      {watch.watching
+        ? busy
+          ? `Syncing (${watch.pending})`
+          : "Pause watcher"
+        : "Resume watcher"}
+    </button>
+  );
+}
+
+/** One line stating what the watcher covers, if anything. */
+function WatcherStatus() {
+  const watch = useSyncExternalStore(
+    watchStore.subscribe,
+    watchStore.getSnapshot,
+    watchStore.getSnapshot,
+  );
+  if (watch.roots.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-space-sm rounded-lg bg-surface-container-lowest px-space-md py-space-sm text-code-sm text-on-surface-variant">
+      <span
+        className={`h-2 w-2 rounded-full ${
+          watch.watching
+            ? "bg-primary-container shadow-[0_0_8px_rgba(178,247,0,0.8)]"
+            : "bg-surface-container-highest"
+        }`}
+      />
+      <span>
+        {watch.watching ? (
+          <>
+            Watching{" "}
+            <span className="text-on-surface">
+              {watch.roots.length} {watch.roots.length === 1 ? "folder" : "folders"}
+            </span>{" "}
+            — saved text files re-index themselves
+            {watch.pending > 0 && (
+              <span className="text-primary-fixed-dim">
+                {" "}
+                · {watch.pending} {watch.pending === 1 ? "change" : "changes"} queued
+              </span>
+            )}
+          </>
+        ) : (
+          <>Watcher paused — saved changes will not sync until resumed</>
+        )}
+      </span>
+      <span className="ml-auto hidden text-on-surface-variant/60 lg:inline">
+        new media files still need a rescan
+      </span>
+    </div>
+  );
+}
 
 function Stage({
   label,

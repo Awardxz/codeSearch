@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../../components/Icon";
 import { useAppServices } from "../../hooks/useAppServices";
 import { Badge } from "../../components/Badges";
@@ -53,7 +53,11 @@ const RESULT_LIMITS = [10, 25, 50];
 
 export function SearchScreen() {
   const { index, embeddingStatus } = useAppServices();
-  const settings = searchSettingsStore.getSnapshot();
+  const settings = useSyncExternalStore(
+    searchSettingsStore.subscribe,
+    searchSettingsStore.getSnapshot,
+    searchSettingsStore.getServerSnapshot,
+  );
   const history = searchHistoryStore.getSnapshot();
 
   const [query, setQuery] = useState("");
@@ -103,6 +107,7 @@ export function SearchScreen() {
         limit: settings.limit,
         kinds,
         minScore: settings.minScore,
+        strategy: settings.strategy,
       });
       setResponse(result);
       setCursor(result.hits.length > 0 ? 0 : -1);
@@ -240,8 +245,17 @@ export function SearchScreen() {
           onClear={clearAll}
           busy={searching}
           disabled={modelBusy}
-          modeLabel="Semantic (Vector)"
-          onToggleMode={() => undefined}
+          modeLabel={
+            settings.strategy === "hybrid"
+              ? "Hybrid (Vector + Lexical)"
+              : "Semantic (Vector)"
+          }
+          onToggleMode={() => {
+            const next =
+              settings.strategy === "hybrid" ? "vector" : "hybrid";
+            searchSettingsStore.setStrategy(next);
+            if (query.trim()) void runSearch(query);
+          }}
           suggestions={SUGGESTED_INTENTS.slice(0, 3)}
           onSuggestion={(text) => {
             setQuery(text);
@@ -266,7 +280,9 @@ export function SearchScreen() {
             <span className="text-surface-container-highest">•</span>
             <span className="flex items-center gap-1 text-code-sm text-on-surface-variant/80">
               <Icon name="sort" className="text-[13px]" />
-              Cosine similarity
+              {settings.strategy === "hybrid"
+                ? "Blended vector + lexical"
+                : "Cosine similarity"}
             </span>
           </div>
 
@@ -774,8 +790,8 @@ function EngineStatusStrip({
         <span className="text-surface-container-highest">•</span>
         <div className="flex items-center gap-1 truncate">
           <Icon name="storage" className="text-xs text-secondary" />
-          Vector storage: in-memory index (
-          {embeddingBytes > 0 ? formatBytes(embeddingBytes) : "—"})
+          Vector storage: SQLite snapshot (
+          {embeddingBytes > 0 ? formatBytes(embeddingBytes) : "—"} resident)
         </div>
         <span className="text-surface-container-highest">•</span>
         <div className="hidden items-center gap-1 truncate lg:flex">

@@ -38,6 +38,18 @@ readout measured from the live index rather than hard-coded.
   with matching lines highlighted and scrolled into view; media plays inline.
 - **Incremental indexing.** Unchanged files are skipped on re-scan, so only
   what's new gets embedded.
+- **Persistent index.** Vectors, chunk texts and file metadata live in a local
+  SQLite snapshot and reload on launch — a restart no longer means
+  re-embedding everything. Snapshots from a different model are discarded
+  rather than searched.
+- **File watcher.** Indexed folders stay live: saved text files re-index
+  themselves, deletions leave the index, and new files are picked up. Pausable
+  from the Index tab; pruned directories and hidden files are ignored, exactly
+  like the scanner.
+- **Hybrid retrieval.** Vector similarity fused with BM25 lexical matching
+  (code-aware tokenizer: camelCase, letter/digit boundaries), so exact symbols
+  and rare terms surface even when the embedding flattens them. Switchable per
+  search from the mode toggle or Settings.
 - **Tunable retrieval.** Result cap and similarity cutoff live in Settings and
   apply to every search.
 - **Custom window frame.** Borderless Tauri window with its own titlebar:
@@ -135,11 +147,14 @@ src/
     media/         Video frame extraction
     preview/       Preview store and data loading
     scanning/      Folder scan and bulk-read IPC
-    search/        Search service, settings and history stores
+    search/        Search service (vector + hybrid), settings and history stores
+    watch/         Filesystem watch service: coalesce, filter, sync
   types/           Shared application types
 src-tauri/src/
   commands.rs      Validated file reads (text, bulk, media bytes)
   scanner.rs       Parallel folder walk with pruning
+  persist.rs       SQLite index snapshot (upsert/load/remove/stats)
+  watch.rs         Recursive watcher, emits index://fs-changed
 scripts/           Smoke and verification scripts (see below)
 assets/            Logo and app screenshots used in this README
 ```
@@ -155,6 +170,9 @@ npm run verify:multimodal         # real model: image/audio/video in one space
 npm run verify:preview            # preview data path and line-number contract
 npm run verify:bulk               # scan -> chunk -> batch -> scatter
 npm run verify:folder-scan        # end-to-end scan of a real project tree
+npm run verify:persist             # index <-> SQLite codec byte-exactness
+npm run verify:watch               # watcher filter rules vs scanner
+npm run verify:hybrid              # BM25 ranking + vector/lexical fusion
 ```
 
 `verify:folder-scan` builds a realistic project tree on disk and runs it

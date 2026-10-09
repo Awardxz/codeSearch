@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useState } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
 import { Icon } from "../../components/Icon";
 import { Badge, ProgressBar } from "../../components/Badges";
 import { useAppServices } from "../../hooks/useAppServices";
@@ -6,7 +6,11 @@ import { searchSettingsStore } from "../../lib/search/searchSettings";
 import { searchHistoryStore } from "../../lib/search/searchHistory";
 import { MODEL_DISPLAY_NAME, MODEL_ID } from "../../lib/embeddings/config";
 import { indexStore } from "../../lib/indexing/indexStore";
-import { commonRootOf, formatBytes, formatCompact } from "../../lib/format";
+import {
+  getPersistStats,
+  type PersistStats,
+} from "../../lib/indexing/indexPersist";
+import { commonRootOf, formatBytes, formatCompact, shortenPath } from "../../lib/format";
 
 /**
  * Settings and diagnostics, laid out as the Stitch "Settings" screen: a
@@ -41,6 +45,19 @@ export function SettingsScreen() {
   const embeddingBytes = chunkCount * (embeddingStatus.dimension ?? 0) * 4;
   const failedCount = files.filter((file) => file.status === "failed").length;
   const workspaceRoot = commonRootOf(readyFiles.map((file) => file.path));
+
+  // On-disk snapshot stats for the storage readout. Null outside the desktop
+  // app, where there is no database to report on.
+  const [dbStats, setDbStats] = useState<PersistStats | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getPersistStats().then((stats) => {
+      if (!cancelled) setDbStats(stats);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex min-h-[calc(100vh-5rem)] w-full">
@@ -344,12 +361,18 @@ export function SettingsScreen() {
                     Primary Search Strategy
                   </span>
                   <div className="grid grid-cols-1 gap-space-md sm:grid-cols-2">
-                    <div className="flex items-start gap-space-sm rounded bg-surface-container-high p-space-md shadow-sm">
+                    <label
+                      className={`flex cursor-pointer items-start gap-space-sm rounded p-space-md transition-colors ${
+                        settings.strategy === "vector"
+                          ? "bg-surface-container-high shadow-sm"
+                          : "bg-surface-container hover:bg-surface-container-high"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="search-strategy"
-                        checked
-                        readOnly
+                        checked={settings.strategy === "vector"}
+                        onChange={() => searchSettingsStore.setStrategy("vector")}
                         className="mt-1 accent-primary-container"
                       />
                       <div className="flex flex-col">
@@ -361,12 +384,19 @@ export function SettingsScreen() {
                           in plain language.
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-start gap-space-sm rounded bg-surface-container p-space-md opacity-70">
+                    </label>
+                    <label
+                      className={`flex cursor-pointer items-start gap-space-sm rounded p-space-md transition-colors ${
+                        settings.strategy === "hybrid"
+                          ? "bg-surface-container-high shadow-sm"
+                          : "bg-surface-container hover:bg-surface-container-high"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="search-strategy"
-                        disabled
+                        checked={settings.strategy === "hybrid"}
+                        onChange={() => searchSettingsStore.setStrategy("hybrid")}
                         className="mt-1 accent-primary-container"
                       />
                       <div className="flex flex-col">
@@ -374,14 +404,14 @@ export function SettingsScreen() {
                           <span className="text-body-md font-medium text-on-surface">
                             Hybrid: Vector + BM25 Lexical
                           </span>
-                          <Badge tone="muted">Not in this build</Badge>
+                          <Badge tone="accent">Recommended</Badge>
                         </div>
                         <span className="text-body-sm text-on-surface-variant">
                           Blends token frequency with vector embeddings for exact
                           symbols and typos.
                         </span>
                       </div>
-                    </div>
+                    </label>
                   </div>
                 </div>
 
@@ -503,7 +533,7 @@ export function SettingsScreen() {
                     <div className="flex flex-wrap items-center gap-space-lg pt-2 text-code-sm text-on-surface-variant">
                       <span className="flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary-container" />
-                        In-memory vector index
+                        SQLite snapshot on this disk
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary-container" />
@@ -514,29 +544,40 @@ export function SettingsScreen() {
                 </div>
                 <div className="flex min-w-[200px] flex-col gap-space-xs rounded bg-surface-container p-space-md">
                   <span className="text-label-sm tracking-wider text-on-surface-variant uppercase">
-                    Process Footprint
+                    On-Disk Snapshot
                   </span>
                   <div className="flex items-baseline justify-between pt-1">
                     <span className="text-body-sm text-on-surface-variant">
-                      Embeddings resident:
+                      Index database:
+                    </span>
+                    <span className="text-code-sm font-medium text-primary tabular-nums">
+                      {dbStats ? formatBytes(dbStats.bytes) : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-body-sm text-on-surface-variant">
+                      Files stored:
+                    </span>
+                    <span className="text-code-sm font-medium text-primary tabular-nums">
+                      {dbStats ? dbStats.files.toLocaleString() : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-body-sm text-on-surface-variant">
+                      Vectors resident:
                     </span>
                     <span className="text-code-sm font-medium text-primary tabular-nums">
                       {embeddingBytes > 0 ? formatBytes(embeddingBytes) : "—"}
                     </span>
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-body-sm text-on-surface-variant">
-                      Chunks held:
-                    </span>
-                    <span className="text-code-sm font-medium text-primary tabular-nums">
-                      {formatCompact(chunkCount)}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-container-highest">
-                    <div className="h-full w-1/4 rounded-full bg-secondary" />
-                  </div>
-                  <span className="text-right text-code-sm text-on-surface-variant/70 tabular-nums">
-                    released when the app closes
+                  <span
+                    className="truncate text-right text-code-sm text-on-surface-variant/70 tabular-nums"
+                    title={dbStats?.path ?? "Snapshot path unavailable outside the desktop app."}
+                  >
+                    {dbStats ? shortenPath(dbStats.path, 32) : "browser preview — no snapshot"}
+                  </span>
+                  <span className="text-right text-code-sm text-on-surface-variant/70">
+                    reloads automatically on launch
                   </span>
                 </div>
               </div>

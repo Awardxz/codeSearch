@@ -11,6 +11,7 @@ import { indexStore } from "../lib/indexing/indexStore";
 import type { BulkFile } from "../lib/indexing/bulkPlanner";
 import { readTextFilesBulk } from "../lib/scanning/scanService";
 import type { RawFileRead } from "../lib/indexing/bulkPlanner";
+import { startWatching } from "../lib/watch/watchService";
 
 /**
  * Drives a folder scan end to end: pick a folder, walk it, read and index it.
@@ -124,6 +125,7 @@ export function useFolderScan() {
   /** Index everything the last scan found. */
   const indexScanned = useCallback(async () => {
     const scan = state.scan;
+    const folder = state.folder;
     if (!scan || scan.files.length === 0) return;
     if (busyRef.current) return;
 
@@ -177,6 +179,10 @@ export function useFolderScan() {
         elapsedMs: result.elapsedMs,
       });
       setState((current) => ({ ...current, stage: "done" }));
+
+      // Keep the index live: watch the folder that was just indexed so saves
+      // re-index themselves. Watching is passive until files change.
+      if (folder) void startWatching([folder]);
     } catch (error) {
       setState((current) => ({
         ...current,
@@ -187,7 +193,7 @@ export function useFolderScan() {
       indexStore.endBulkRun();
       busyRef.current = false;
     }
-  }, [state.scan]);
+  }, [state.scan, state.folder]);
 
   const cancel = useCallback(() => {
     indexStore.cancelBulk();

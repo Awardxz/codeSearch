@@ -8,6 +8,8 @@
  * same retrieval behaviour.
  */
 
+import type { SearchStrategy } from "../../types";
+
 export type SearchSettings = {
   /** Maximum number of files returned per search. */
   limit: number;
@@ -16,6 +18,8 @@ export type SearchSettings = {
    * keeps a long-tail index from surfacing unrelated files.
    */
   minScore: number;
+  /** Retrieval strategy: pure vectors, or vectors fused with BM25. */
+  strategy: SearchStrategy;
 };
 
 export const LIMIT_CHOICES = [10, 25, 50] as const;
@@ -25,6 +29,7 @@ export const MIN_SCORE_RANGE = { min: 0, max: 0.95, step: 0.01 } as const;
 const DEFAULTS: SearchSettings = {
   limit: 25,
   minScore: 0.2,
+  strategy: "vector",
 };
 
 const STORAGE_KEY = "code-search:search-settings";
@@ -44,6 +49,7 @@ function read(): SearchSettings {
         parsed.minScore <= MIN_SCORE_RANGE.max
           ? parsed.minScore
           : DEFAULTS.minScore,
+      strategy: parsed.strategy === "hybrid" ? "hybrid" : DEFAULTS.strategy,
     };
   } catch {
     return DEFAULTS;
@@ -65,6 +71,7 @@ function commit(next: SearchSettings) {
 
 export const searchSettingsStore = {
   getSnapshot: (): SearchSettings => state,
+  getServerSnapshot: (): SearchSettings => ({ ...DEFAULTS }),
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
     return () => {
@@ -76,5 +83,8 @@ export const searchSettingsStore = {
   },
   setMinScore(minScore: number) {
     commit({ ...state, minScore });
+  },
+  setStrategy(strategy: SearchStrategy) {
+    commit({ ...state, strategy });
   },
 };

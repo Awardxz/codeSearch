@@ -133,6 +133,8 @@ export type IndexingProgress = {
   error: AppError | null;
 };
 
+export type SearchStrategy = "vector" | "hybrid";
+
 export type SearchRequest = {
   query: string;
   limit: number;
@@ -140,6 +142,8 @@ export type SearchRequest = {
   kinds?: FileKind[];
   /** Cosine similarity cutoff; matches below it are discarded. */
   minScore?: number;
+  /** Retrieval strategy: pure vectors, or vectors fused with BM25. */
+  strategy?: SearchStrategy;
 };
 
 export type SearchHit = {
@@ -147,7 +151,12 @@ export type SearchHit = {
   name: string;
   extension: string;
   kind: FileKind;
+  /** Final ranking score: cosine similarity, or the hybrid blend. */
   score: number;
+  /** Cosine component of the score, always computed. */
+  vectorScore: number;
+  /** BM25 component (max-normalized), or null when the vector strategy ran. */
+  lexicalScore: number | null;
   /** Best-matching chunk snippet. */
   snippet: string;
   lineStart?: number;

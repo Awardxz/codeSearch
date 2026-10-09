@@ -105,6 +105,19 @@ export function ResultCard({
             <strong className="font-medium text-on-surface">Modality:</strong> matched
             by what is inside this file, not by its text.
           </span>
+        ) : hit.lexicalScore !== null ? (
+          <span className="truncate text-body-sm text-on-surface-variant">
+            <strong className="font-medium text-on-surface">Blended:</strong>{" "}
+            <span className="tabular-nums">{hit.score.toFixed(3)}</span>
+            <span className="text-on-surface-variant/70">
+              {" "}
+              · vector {hit.vectorScore.toFixed(2)} · lexical{" "}
+              {hit.lexicalScore.toFixed(2)}
+            </span>
+            {hit.otherMatches > 0 && (
+              <> · {hit.otherMatches} other matching chunk{hit.otherMatches === 1 ? "" : "s"} in this file</>
+            )}
+          </span>
         ) : (
           <span className="truncate text-body-sm text-on-surface-variant">
             <strong className="font-medium text-on-surface">Score:</strong>{" "}
