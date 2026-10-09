@@ -10,7 +10,7 @@
 
 ### Search
 
-![codeSearch search tab — semantic search over a local workspace](assets/SearchTAB.png)
+![codeSearch search tab — semantic search over a local workspace](assets/SearchTAB2.png)
 
 Type what the code *does* ("retry exponential backoff", "auth token expiry") and
 results are ranked by semantic similarity, with the matched snippet, similarity
