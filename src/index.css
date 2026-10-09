@@ -1,0 +1,340 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — Google Stitch "Local Semantic Code Search" / Semantic Index.
+ *
+ * Imported from the Stitch project `Local Semantic Code Search Desktop App`
+ * (design system `Semantic Index`), so the React implementation and the Stitch
+ * screens share one source of truth: colour roles, spacing scale, type scale
+ * and corner radii all come from the design system's DESIGN.md and its
+ * generated token map.
+ *
+ * The app stays offline-first, so the two display faces are declared as a
+ * stack rather than loaded from a CDN: if Geist or JetBrains Mono happen to be
+ * installed they are used, otherwise the system faces carry the same roles.
+ */
+
+@theme {
+  /* Surfaces: charcoal tiers, layered so elevation is tonal rather than shadow */
+  --color-canvas: #0c0e11; /* surface-container-lowest — desktop frame, editor */
+  --color-background: #111317;
+  --color-surface: #111317;
+  --color-surface-dim: #111317;
+  --color-surface-bright: #37393d;
+
+  --color-surface-container-lowest: #0c0e11;
+  --color-surface-container-low: #1a1c1f;
+  --color-surface-container: #1e2023;
+  --color-surface-container-high: #282a2d;
+  --color-surface-container-highest: #333538;
+  --color-surface-variant: #333538;
+
+  /* Content */
+  --color-on-surface: #e2e2e6;
+  --color-on-surface-variant: #c2caad;
+  --color-outline: #8c9479;
+  --color-outline-variant: #424a33;
+
+  /* Key roles. `primary` is the high-contrast near-white used for headings and
+     active text; the electric lime lives in `primary-container`, which is what
+     the design system actually paints buttons and indicators with. */
+  --color-primary: #ffffff;
+  --color-on-primary: #243600;
+  --color-primary-container: #b2f700;
+  --color-on-primary-container: #4e6e00;
+  --color-primary-fixed-dim: #9cd900;
+
+  /* Secondary — file paths, symbols, jump links. */
+  --color-secondary: #7bd0ff;
+  --color-secondary-container: #00a6e0;
+  --color-on-secondary-container: #00374d;
+  --color-secondary-fixed-dim: #7bd0ff;
+
+  /* Tertiary — language scopes, literals, embeddings status. */
+  --color-tertiary-fixed-dim: #ddb8ff;
+  --color-tertiary-container: #f0dbff;
+  --color-on-tertiary-container: #8147bb;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  /* Semantic amber, used for dirty-buffer and warning state only. */
+  --color-warning: #fb923c;
+
+  /* Success reads as the dimmer lime so the bright lime stays reserved for
+     matches and primary executions. */
+  --color-success: #9cd900;
+
+  /* Hairlines */
+  --color-line: #1e232b;
+  --color-line-strong: #272e38;
+
+  /* Spacing scale — 4px sub-divisions of an 8px rhythm, per the design md. */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.375rem;
+  --spacing-space-md: 0.5rem;
+  --spacing-space-lg: 0.75rem;
+  --spacing-space-xl: 1rem;
+  --spacing-gutter: 0.75rem;
+  --spacing-margin: 1rem;
+
+  /* Type scale */
+  --text-headline-lg: 1.5rem;
+  --text-headline-lg--line-height: 2rem;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 1.125rem;
+  --text-headline-md--line-height: 1.5rem;
+  --text-headline-md--letter-spacing: -0.015em;
+  --text-headline-md--font-weight: 600;
+
+  --text-headline-sm: 0.9375rem;
+  --text-headline-sm--line-height: 1.375rem;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 500;
+
+  --text-body-lg: 0.875rem;
+  --text-body-lg--line-height: 1.375rem;
+
+  --text-body-md: 0.8125rem;
+  --text-body-md--line-height: 1.25rem;
+
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1.125rem;
+
+  --text-code-lg: 0.875rem;
+  --text-code-lg--line-height: 1.375rem;
+
+  --text-code-md: 0.8125rem;
+  --text-code-md--line-height: 1.25rem;
+
+  --text-code-sm: 0.75rem;
+  --text-code-sm--line-height: 1rem;
+
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1rem;
+  --text-label-md--letter-spacing: 0.02em;
+  --text-label-md--font-weight: 500;
+
+  --text-label-sm: 0.6875rem;
+  --text-label-sm--line-height: 0.875rem;
+  --text-label-sm--letter-spacing: 0.03em;
+  --text-label-sm--font-weight: 500;
+
+  --font-sans: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+
+  /* Family aliases for the Stitch `font-*` classes (`font-code-sm`,
+     `font-body-md`, …). Tailwind v4 generates a `font-<name>` utility from
+     each `--font-<name>` key, so these make the design's family classes set
+     the intended stack instead of silently doing nothing. Sizes still come
+     from the `--text-*` scale above. */
+  --font-code-sm: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+  --font-code-md: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+  --font-code-lg: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+  --font-body-sm: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-body-md: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-body-lg: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-label-sm: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+  --font-label-md: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono",
+    ui-monospace, "Consolas", monospace;
+  --font-headline-sm: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-headline-md: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-headline-lg: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+
+  --animate-rise: rise 0.4s var(--ease-out-quart) both;
+  --animate-panel-in: panel-in 0.3s var(--ease-out-quart) both;
+  --animate-sheet-in: sheet-in 0.3s var(--ease-out-quart) both;
+  --animate-scrim-in: fade-in 0.3s var(--ease-out-quart) both;
+  --animate-fade-in: fade-in 0.25s var(--ease-out-quart) both;
+  --animate-pulse-soft: pulse-soft 2.4s var(--ease-in-out-quint) infinite;
+  --animate-spin-slow: spin 1s linear infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The preview reads as a sheet sliding in from the right, so the results stay
+   visible beside it while you read. */
+@keyframes sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* The signature moment: a matched line settling into place. */
+@keyframes flash-match {
+  0% {
+    background-color: color-mix(in srgb, var(--color-primary-container) 22%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-primary-container);
+  }
+  100% {
+    background-color: color-mix(in srgb, var(--color-primary-container) 12%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-primary-container);
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-canvas font-sans text-on-surface antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+/* Text selection carries the lime accent, so selecting code is on-brand. */
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary-container) 28%, transparent);
+  color: var(--color-primary);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-outline);
+}
+
+/* One focus treatment everywhere: visible, on-brand, never the default ring. */
+:focus-visible {
+  outline: 2px solid var(--color-primary-container);
+  outline-offset: 1px;
+}
+
+/* Interactive surfaces respond to the press. */
+.press {
+  transition:
+    transform 0.16s var(--ease-spring),
+    background-color 0.16s var(--ease-out-quart),
+    border-color 0.16s var(--ease-out-quart),
+    color 0.16s var(--ease-out-quart),
+    box-shadow 0.16s var(--ease-out-quart);
+}
+
+.press:active {
+  transform: scale(0.975);
+}
+
+/* Structural card: hairline, no shadow — depth comes from tonal layering. */
+.panel {
+  background-color: var(--color-surface-container-low);
+  border: 1px solid var(--color-line);
+}
+
+/* Lifted surface for the search HUD and command-palette style overlays. */
+.elevated {
+  background-color: var(--color-surface-container);
+  border: 1px solid color-mix(in srgb, var(--color-surface-container-highest) 60%, transparent);
+  box-shadow:
+    0 16px 36px -8px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* A hairline that fades at both ends, for section divisions. */
+.rule {
+  height: 1px;
+  border: 0;
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--color-line-strong) 8%,
+    var(--color-line-strong) 92%,
+    transparent
+  );
+}
+
+/* Active state glow: a focused search boundary or a matched token. */
+.glow-active {
+  box-shadow: 0 0 12px -2px color-mix(in srgb, var(--color-primary-container) 25%, transparent);
+}
+
+/* Reduced motion: keep state changes legible, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

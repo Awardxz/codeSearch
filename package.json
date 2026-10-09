@@ -1,0 +1,39 @@
+{
+  "name": "semantic-file-search",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "smoke:render": "node scripts/render-smoke.mjs",
+    "verify:embeddings": "node scripts/verify-embeddings.ts",
+    "verify:multimodal": "node scripts/verify-multimodal.ts",
+    "verify:preview": "node scripts/verify-preview.mjs",
+    "verify:bulk": "node scripts/verify-bulk.mjs",
+    "verify:folder-scan": "node scripts/verify-folder-scan.mjs",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.4.299",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.0.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
